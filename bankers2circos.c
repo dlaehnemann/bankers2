@@ -176,52 +176,6 @@ uint32_t compute_bankers(unsigned long a, args_t *args)
     return args->bankers[a];
 }
 
-/*
- * Returns the position of the specified Banker's number, b.
- * The ones contribute \sum_{i=0}^{c-1}{\binom{n}{i}}.
- * Each zero (except leading zeros) contributes
- *  \binom{n-i-1}{c-c_i-1}, where
- *   n is the bit string args->nsmp,
- *   c is the cardinality of the bit string,
- *   c_i is the cardinality up to bit i, and
- *   i is the position of the zero in the string.
- */
-unsigned long inverse (unsigned long b, args_t *args) {
-    unsigned int c = 0;
-    uint32_t n = args->nsmp;
-    unsigned long a = 0, i = 1;
-    for (; i <= b; i <<= 1)
-        if (b & i) c++;
-    for (i = 1 << (n - 1); i > 0 && c > 0; --n, i >>= 1)
-        if (b & i)
-            a += choose(args->nsmp, --c, args);
-        else
-            a += choose(n - 1, c - 1, args);
-
-    return a;
-}
-
-/*
- * Recursive function
- */
-unsigned long next (unsigned long b, args_t *args)
-{
-    unsigned int z = 0, y = 0;
-    unsigned long i = 1, max = 1 << args->nsmp;
-    while (i < max && (b & i) )
-        y++, i <<= 1;
-    while (i < max && !(b & i))
-        z++, i <<= 1;
-    if (i < max) {
-        b &= ~i;
-        i = ~((1 << (z + y + 1)) - 1);
-    }
-    b &= i;
-    i = (1 << (y + z)) - (1 << (z - 1));
-    b |= i;
-    return b & (max - 1);
-}
-
 // CODE BY CORIN LAWSON END
 
 
