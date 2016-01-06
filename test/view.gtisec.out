@@ -1,0 +1,15 @@
+# This file was produced by bcftools (1.2-185-g0d3a2f2-dirty+htslib-1.3-2-g6a745fe), the command line was:
+# 	 bcftools gtisec  test/view.vcf
+# Genotype intersections across samples:
+@SMPS NA00003 NA00002 NA00001
+# Subset intersection counts are in global banker's sequence order.
+#   After exclusive sample counts in order of the SMPS-line, banker's sequence continues with:
+#   NA00003,NA00002   NA00003,NA00001   ...
+# [1] Number of shared non-ref genotypes
+9
+4
+5
+1
+0
+8
+1
