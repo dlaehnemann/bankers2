@@ -372,6 +372,7 @@ void print_circos_conf(args_t *args)
             "# See etc/tracks/link.conf in Circos distribution\n");
 }
 
+/* DEBUG PRINTING OF TWO-DIMENSIONAL ARRAY is_cmp_cnt
 static inline print_isc(args_t *args, uint64_t *is_smp_cnt)
 {
     int s1, s2;
@@ -392,6 +393,7 @@ static inline print_isc(args_t *args, uint64_t *is_smp_cnt)
     }
     fprintf(stderr, "\n");
 }
+*/
 
 
 void print_circos_karyotype_links(args_t *args)
@@ -424,7 +426,6 @@ void print_circos_karyotype_links(args_t *args)
                 m = 0; /* samples seen */
                 uint8_t smps[k]; /* keep track of encountered samples for link file printing */
                 c = args->bankers[p]; // get current sample int from banker's sequence
-                fprintf(stderr, "Current sample int: %"PRIu64"\n", c);
                 while ( m < k && n < args->nsmp )
                 {
                     if ( c & 1 ) // collect stats from each sample's perspective
@@ -471,11 +472,7 @@ void print_circos_karyotype_links(args_t *args)
                 for ( k1 = 0; k1 < k; k1++ ) smp_s[ smps[k1] ] += args->smp_is[p];
             }
         }
-            fprintf(stderr, "is_smp_cnt after processing subset size %"PRIi8":\n", k);
-            print_isc(args, &is_smp_cnt[0][0]);
     }
-
-    print_isc(args, &is_smp_cnt[0][0]);
 
     // KARYOTYPE PRINTING (SAMPLES AND BANDS)
     uint8_t n;
