@@ -1,0 +1,12 @@
+band	NA00003_id	NA00003_1	1_smps	0	9	ylgn-9-seq-7
+band	NA00003_id	NA00003_2	2_smps	9	10	ylgn-9-seq-8
+band	NA00003_id	NA00003_3	3_smps	10	11	ylgn-9-seq-9
+chr	-	NA00003_id	NA00003	0	11	white
+band	NA00002_id	NA00002_1	1_smps	0	4	ylgn-9-seq-7
+band	NA00002_id	NA00002_2	2_smps	4	13	ylgn-9-seq-8
+band	NA00002_id	NA00002_3	3_smps	13	14	ylgn-9-seq-9
+chr	-	NA00002_id	NA00002	0	14	white
+band	NA00001_id	NA00001_1	1_smps	0	5	ylgn-9-seq-7
+band	NA00001_id	NA00001_2	2_smps	5	13	ylgn-9-seq-8
+band	NA00001_id	NA00001_3	3_smps	13	14	ylgn-9-seq-9
+chr	-	NA00001_id	NA00001	0	14	white
