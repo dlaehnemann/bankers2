@@ -86,7 +86,10 @@ static void init_data(args_t *args)
 
 static void destroy_data(args_t *args)
 {
-    if (args->missing) free(args->missing_gts);
+    if (args->missing)
+    {
+        free(args->missing_gts);
+    }
     free(args->smp_is);
     free(args->bankers);
     int i;
@@ -459,7 +462,7 @@ void print_circos_karyotype_links(args_t *args)
         e += subs; // get end position of current subset size
         for ( p = s; p < e; p++, subs_i++ ) // iterate over all subsets of current size k
         {
-            if ( args->smp_is[ args->bankers[p] ] > 0 ) // Nothing to see here, otherwise
+            if ( args->smp_is[p] > 0 ) // Nothing to see here, otherwise
             {
                 uint8_t m, n;
                 uint64_t c = 0;
@@ -467,12 +470,13 @@ void print_circos_karyotype_links(args_t *args)
                 m = 0; /* samples seen */
                 uint8_t smps[k]; /* keep track of encountered samples for link file printing */
                 c = args->bankers[p]; // get current sample int from banker's sequence
+                fprintf(stderr, "Current sample int: %"PRIu64"\n", c);
                 while ( m < k && n < args->nsmp )
                 {
                     if ( c & 1 ) // collect stats from each sample's perspective
                     {
-                        is_smp_cnt[n][k-1] += args->smp_is[ args->bankers[p] ];
-                        smps[m] = n;
+                        is_smp_cnt[args->nsmp-1 - n][k-1] += args->smp_is[p];
+                        smps[m] = args->nsmp-1 - n;
                         m++;
                     }
                     c >>= 1;
@@ -493,10 +497,10 @@ void print_circos_karyotype_links(args_t *args)
                                     "%s_id\t%"PRIu64"\t%"PRIu64"\t%s_id\t%"PRIu64"\t%"PRIu64"\tcrest=%f,color=%s%"PRIu64"_a%i,radius=%fr\n",
                                     args->smpns[ smps[i1] ],
                                     smp_s[ smps[i1] ],
-                                    smp_s[ smps[i1] ] + args->smp_is[ args->bankers[p] ],
+                                    smp_s[ smps[i1] ] + args->smp_is[p],
                                     args->smpns[ smps[i2] ],
                                     smp_s[ smps[i2] ],
-                                    smp_s[ smps[i2] ] + args->smp_is[ args->bankers[p] ],
+                                    smp_s[ smps[i2] ] + args->smp_is[p],
                                     (1.2/args->nsmp)*(k-1) + ((3.0/args->nsmp)/subs)*subs_i,
                                     ( k == args->nsmp ) ? args->palette[0] : args->palette[1],
                                     ( k == args->nsmp ) ? 9 : (p % 7) + 1,
@@ -510,7 +514,7 @@ void print_circos_karyotype_links(args_t *args)
                 }
                 // update samples' start positions for link file printing
                 uint8_t k1;
-                for ( k1 = 0; k1 < k; k1++ ) smp_s[ smps[k1] ] += args->smp_is[ args->bankers[p] ];
+                for ( k1 = 0; k1 < k; k1++ ) smp_s[ smps[k1] ] += args->smp_is[p];
             }
         }
             fprintf(stderr, "is_smp_cnt after processing subset size %"PRIi8":\n", k);
@@ -549,11 +553,9 @@ void print_circos_karyotype_links(args_t *args)
         {
             uint64_t e = sum + args->missing_gts[n];
             fprintf(args->couts[1], // print missing genotypes band of sample
-                            "band\t%s_id\t%s_%"PRIu8"\t%"PRIu8"_smps\t%"PRIu64"\t%"PRIu64"\t%s\n",
+                            "band\t%s_id\t%s_MV\tmissing_values\t%"PRIu64"\t%"PRIu64"\t%s\n",
                             sn,
                             sn,
-                            k,
-                            k,
                             sum,
                             e,
                             "rdylgn-11-div-1_a4"
@@ -641,43 +643,50 @@ int main(int argc, char *argv[])
         strncpy(args->prefix, bn, o - bn);
     }
     if ( argc>optind+1 )  usage(EXIT_FAILURE);  // too many files given
-       FILE *in = fopen(fname, "r");
-       if ( in == NULL ) error(EXIT_FAILURE, ENOENT, "Could not open file %s\n", fname);
+        FILE *in = fopen(fname, "r");
+        if ( in == NULL ) error(EXIT_FAILURE, ENOENT, "Could not open file %s\n", fname);
 
-       char *line = NULL;
-       size_t len = 0;
-       ssize_t read;
-       uint64_t j = 1;
-       while ( ( read = getline(&line, &len, in)) != -1 )
-       {
-           if ( line[0] == '#' )
-           {
-               continue; // skip comment lines
-           } else if ( line[0] == '@' && line[1] == 'S' && line[2] == 'M' && line[3] == 'P' && line[4] == 'S' ) // sample names line
-           {
-               line[strcspn(line, "\r\n")] = 0;
-               char *p;
-               int c = 0;
-               p = strtok(line, " \t"); // chop off leading "@SMPS[ \t]"
-               p = strtok(NULL, ", \t"); // split on following commas, spaces or tabs
-               while ( p != NULL )
-               {
-                   if ( c >= 32 ) error(EXIT_FAILURE, EIO, "Too many samples. A maximum of 32 is supported.\n");
-                   args->smpns[c] = calloc(strlen(p)+1, sizeof(char));
-                   strcpy(args->smpns[c], p);
-                   p = strtok(NULL, ", \t"); // split on following commas, spaces or tabs
-                   c++;
-               }
-               args->nsmp = c;
-               init_data(args); // we need to know the number of samples for args initialization
-           } else {
-               char *end;
-               args->smp_is[j] = strtoul(line, &end, 10);
-               j++;
-           }
+        char *line = NULL;
+        size_t len = 0;
+        ssize_t read;
+        uint64_t j = 1;
+        int m = 0;
+        char *end;
+        while ( ( read = getline(&line, &len, in)) != -1 )
+        {
+            if ( line[0] == '#' )
+            {
+                continue; // skip comment lines
+            } else if ( line[0] == '@' && line[1] == 'S' && line[2] == 'M' && line[3] == 'P' && line[4] == 'S' ) // sample names line
+            {
+                line[strcspn(line, "\r\n")] = 0;
+                char *p;
+                int c = 0;
+                p = strtok(line, " \t"); // chop off leading "@SMPS[ \t]"
+                p = strtok(NULL, ", \t"); // split on following commas, spaces or tabs
+                while ( p != NULL )
+                {
+                    if ( c >= 32 ) error(EXIT_FAILURE, EIO, "Too many samples. A maximum of 32 is supported.\n");
+                    args->smpns[c] = calloc(strlen(p)+1, sizeof(char));
+                    strcpy(args->smpns[c], p);
+                    p = strtok(NULL, ", \t"); // split on following commas, spaces or tabs
+                    c++;
+                }
+                args->nsmp = c;
+                init_data(args); // we need to know the number of samples for args initialization
+            } else {
+                if ( args->missing && m < args->nsmp )
+                {
+                    args->missing_gts[m] = strtoul(line, &end, 10);
+                    m++;
+                    continue;
+                }
+                args->smp_is[j] = strtoul(line, &end, 10);
+                j++;
+            }
 
-       }
-       fclose(in);
+        }
+        fclose(in);
 
     uint32_t i;
     /* Compute banker's sequence for following circos file printing.
