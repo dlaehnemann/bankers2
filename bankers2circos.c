@@ -16,6 +16,10 @@ typedef struct
     int nsmp; /*! number of samples, determined from number of single-sample lines at beginning of file */
     int nsmpp2; /*! 2^(nsmp) (is needed multiple times) */
     char **smpns; /*! list of samples as specified in banker's sequence file of intersection counts */
+    uint64_t total; /*! total number of counts in all samples, needed to determine tick marks */
+    int label_multipl; /*! label multiplier, any multiple of 3 for the decimal powers */
+    char *label_suff; /*! suffix for tick mark label suffix, corresponding to label_multipl, i.e. k, M, G or T */
+    double tick_spacing[3]; /*! values for the labelled tick marks and the two smaller distance tick mark categories */
     char *palette[2]; /*! palette prefix for plotting circos files, iff they should be output
                                First palette: Banding pattern encoding sample numbers.
                                Second palette: Differentiate sets within sample numbers. */
@@ -178,6 +182,52 @@ uint32_t compute_bankers(unsigned long a, args_t *args)
 
 // CODE BY CORIN LAWSON END
 
+void determine_ticks(args_t *args)
+{
+    uint64_t ld = args->total / args->nsmp;
+    int p10;
+    for ( p10 = 0; ld >= 10; )
+    {
+        ld /= 10;
+        p10++;
+    }
+
+    int multiplier = p10 / 3;
+    args->label_multipl = multiplier;
+    switch (multiplier)
+    {
+    case 0: args->label_suff = malloc(1); args->label_suff = ""; break;
+    case 1: args->label_suff = malloc(2); args->label_suff = "k"; break;
+    case 2: args->label_suff = malloc(2); args->label_suff = "M"; break;
+    case 3: args->label_suff = malloc(2); args->label_suff = "G"; break;
+    case 4: args->label_suff = malloc(2); args->label_suff = "T"; break;
+    case 5: args->label_suff = malloc(2); args->label_suff = "P"; break;
+    case 6: args->label_suff = malloc(2); args->label_suff = "E"; break;
+    case 7: args->label_suff = malloc(2); args->label_suff = "Z"; break;
+    default:    args->label_suff = malloc(13);
+                args->label_suff = "Unknown_Unit";
+                break;
+    }
+    p10 %= 3;
+    if ( ld <= 1 )                                          // working example with label_power = 0
+    {
+        args->tick_spacing[0] = pow(10, p10) / 2;           // 0.5
+        args->tick_spacing[1] = args->tick_spacing[0] / 5;  // 0.1
+        args->tick_spacing[2] = args->tick_spacing[0] / 10; // 0.05
+    }
+    else if ( ld > 1 && ld < 5 )
+    {
+        args->tick_spacing[0] = pow(10, p10);               // 1.0
+        args->tick_spacing[1] = args->tick_spacing[0] / 2;  // 0.5
+        args->tick_spacing[2] = args->tick_spacing[0] / 10; // 0.1
+    }
+    else if ( ld > 4 && ld < 10 )
+    {
+        args->tick_spacing[0] = pow(10, p10) * 2;           // 2.0
+        args->tick_spacing[1] = args->tick_spacing[0] / 2;  // 1.0
+        args->tick_spacing[2] = args->tick_spacing[0] / 4;  // 0.5
+    }
+}
 
 void print_circos_conf(args_t *args)
 {
@@ -233,33 +283,52 @@ void print_circos_conf(args_t *args)
             "\n"
             "radius           = dims(ideogram,radius_outer)\n"
             "orientation      = out\n"
-            "label_multiplier = 1e-3\n"
+            "label_multiplier = %i%s\n"
             "color            = black\n"
+            "force_display    = yes\n"
+            "show_label       = yes\n"
             "size             = 20p\n"
             "thickness        = 3p\n"
             "label_offset     = 5p\n"
+            "#skip_last_label  = yes # uncomment this line, if the end label of a sample overlaps the last regular label\n"
             "\n"
             "<tick>\n"
-            "spacing        = 5u\n"
+            "spacing        = %fu\n"
             "show_label     = no\n"
             "size           = 0.05r\n"
             "</tick>\n"
             "\n"
             "<tick>\n"
-            "spacing        = 10u\n"
+            "spacing        = %fu\n"
             "show_label     = no\n"
             "size           = 0.1r\n"
             "</tick>\n"
             "\n"
             "<tick>\n"
-            "spacing        = 50u\n"
+            "spacing        = %fu\n"
             "size           = 0.2r\n"
             "show_label     = yes\n"
             "label_size     = 24p\n"
-            "format         = %%d K\n"
+            "format         = %%d %s\n"
             "</tick>\n"
             "\n"
-            "</ticks>\n"
+            "<tick>\n"
+            "show           = yes\n"
+            "position       = end\n"
+            "size           = 0.2r\n"
+            "label_size     = 24p\n"
+            "format         = %%d %s\n"
+            "</tick>\n"
+            "\n"
+            "</ticks>\n",
+            args->label_multipl,
+            args->label_multipl == 0 ? "" : "e-3",
+            args->tick_spacing[2],
+            args->tick_spacing[1],
+            args->tick_spacing[0],
+            args->label_suff,
+            args->label_suff);
+    fprintf(args->couts[0],
             "\n"
             "\n"
             "<image>\n"
@@ -273,11 +342,13 @@ void print_circos_conf(args_t *args)
             args->prefix);
     fprintf(args->couts[0],
             "\n"
-            "chromosomes_units = 1000\n"
+            "chromosomes_units = %.0f\n",
+            pow(10, args->label_multipl * 3) );
+    fprintf(args->couts[0],
             "## If you want to restrict plotting to certain samples, uncomment the\n"
             "## two following lines and adjust the sample list to contain those wanted.\n"
-            "#chromosomes       = ");
-    fprintf(args->couts[0], "%s", args->smpns[0] );
+            "#chromosomes       = %s",
+            args->smpns[0] );
     int i;
     for ( i = 1; i < args->nsmp; i++) fprintf(args->couts[0], ";%s", args->smpns[i] );
     fprintf(args->couts[0],
@@ -395,7 +466,24 @@ static inline print_isc(args_t *args, uint64_t *is_smp_cnt)
 }
 */
 
-
+/*!
+ * Print karyotype file and link files for circos plotting.
+ *
+ * The karyotype file contains one "chromosome" per sample, with one band for
+ * each subset size k (from 1, which are counts unique to that sample, to nsmp,
+ * which are the counts that all samples share). Subset sizes are colored green,
+ * with darker green signifying a larger subset size. An extra light red band
+ * is created for each sample's missing value count, if requested via -m.
+ * For each subset size of at least 2 (i.e. where counts are shared with at
+ * least one other sample), one link file is created. For each count, ribbons
+ * of the same color connect all samples that share it. To make different
+ * counts as distinguishable as possible, Ribbon colors are as diverse as
+ * possible and within each subset size, the outer starting positions of the
+ * counts differ, covering cases where similar or same color ribbons and next
+ * to each other. To decrease ribbon overlap, smaller subset sizes have their
+ * ribbons pushed to the edge, while larger subset sizes have their ribbons
+ * pushed to the center.
+ */
 void print_circos_karyotype_links(args_t *args)
 {
     /* counts of how many shared genotypes a sample (first index) has with how
@@ -535,6 +623,7 @@ void print_circos_karyotype_links(args_t *args)
  */
 void print_circos_files(args_t *args)
 {
+    determine_ticks(args);
     print_circos_conf(args);
     print_circos_karyotype_links(args);
 }
@@ -566,6 +655,7 @@ int main(int argc, char *argv[])
     args_t *args = (args_t*) calloc(1,sizeof(args_t));
     args->prefix = NULL;
     args->missing = 0;
+    args->total = 0;
     args->smpns = calloc(32, sizeof(char*));
 
     static struct option loptions[] =
@@ -629,11 +719,18 @@ int main(int argc, char *argv[])
                 if ( args->missing && m < args->nsmp )
                 {
                     args->missing_gts[m] = strtoul(line, &end, 10);
+                    args->total += args->missing_gts[m];
                     m++;
                     continue;
                 }
                 args->smp_is[j] = strtoul(line, &end, 10);
+                args->total += args->smp_is[j];
                 j++;
+                if ( j > args->nsmpp2 )
+                {
+                    fprintf(stderr, "Too many entries in input file. Did you forget to set the missing values flag (-m)?\n");
+                    exit(EXIT_FAILURE);
+                }
             }
 
         }
