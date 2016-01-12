@@ -728,11 +728,15 @@ int main(int argc, char *argv[])
                 j++;
                 if ( j > args->nsmpp2 )
                 {
-                    fprintf(stderr, "Too many entries in input file. Did you forget to set the missing values flag (-m)?\n");
-                    exit(EXIT_FAILURE);
+                    fprintf(stderr, "\nError: Too many entries in input file. Did you forget to set the missing values flag (-m)?\n\n");
+                    usage(EXIT_FAILURE);
                 }
             }
-
+        }
+        if ( j < args->nsmpp2 )
+        {
+            fprintf(stderr, "\nError: Not enough entries in input file. Did you accidentally set the missing values flag (-m)?\n\n");
+            usage(EXIT_FAILURE);
         }
         free(line);
         fclose(in);
