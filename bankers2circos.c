@@ -29,6 +29,7 @@ typedef struct
                                 [   C,   B,   A,  CB,  CA,  BA, CBA ]
                                 [ 100, 010, 001, 110, 101, 011, 111 ]
                                 */
+    uint64_t *quick; /*! array to store lookup table of n choose k values from choose() */
     uint8_t missing; /*! flag, whether missing values should be extracted from banker's sequence file */
     uint64_t *missing_gts; /*! array to count missing genotypes of each sample */
     uint64_t *smp_is; /*! array to track all possible intersections between
@@ -53,6 +54,7 @@ static void init_data(args_t *args)
 {
     args->nsmpp2 = pow( 2, args->nsmp );
     args->bankers = (uint32_t*) calloc( args->nsmpp2, sizeof(uint32_t) );
+    args->quick = (uint64_t*) calloc((args->nsmp * (args->nsmp + 1)) / 4, sizeof(unsigned long));
     if ( args->missing ) args->missing_gts = (uint64_t*) calloc( args->nsmp, sizeof(uint64_t));
     if ( args->nsmp > 9 )
     {
@@ -96,6 +98,7 @@ static void destroy_data(args_t *args)
     }
     free(args->smp_is);
     free(args->bankers);
+    free(args->quick);
     int i;
     for ( i = 0; i <= args->nsmp; i++ )
     {
@@ -103,6 +106,7 @@ static void destroy_data(args_t *args)
         fclose(args->couts[i]);
     }
     free(args->smpns);
+    free(args->prefix);
     free(args->couts);
     free(args);
 }
@@ -120,9 +124,9 @@ static void destroy_data(args_t *args)
  * Otherwise it's dumb (heart) recursion.
  * Added relative to Corin Lawson:
  * * Passing in of sample number through pointer to args struct
+ * * quick lookup table is now maintained externally in args struct
  */
 uint64_t choose(unsigned int n, unsigned int k, args_t *args) {
-    static uint64_t *quick;
     if (n == 0)
         return 0;
     if (n == k || k == 0)
@@ -130,14 +134,11 @@ uint64_t choose(unsigned int n, unsigned int k, args_t *args) {
     if (k > n / 2)
         k = n - k;
 
-    if (!quick)
-        quick = (uint64_t*) calloc((args->nsmp * (args->nsmp + 1)) / 4, sizeof(unsigned long));
-
     unsigned int i = (n * (n - 1)) / 4 + k - 1;
-    if (quick[i] == 0)
-        quick[i] = choose(n - 1, k - 1, args) + choose(n - 1, k, args);
+    if (args->quick[i] == 0)
+        args->quick[i] = choose(n - 1, k - 1, args) + choose(n - 1, k, args);
 
-    return quick[i];
+    return args->quick[i];
 }
 
 /*
@@ -196,16 +197,15 @@ void determine_ticks(args_t *args)
     args->label_multipl = multiplier;
     switch (multiplier)
     {
-    case 0: args->label_suff = malloc(1); args->label_suff = ""; break;
-    case 1: args->label_suff = malloc(2); args->label_suff = "k"; break;
-    case 2: args->label_suff = malloc(2); args->label_suff = "M"; break;
-    case 3: args->label_suff = malloc(2); args->label_suff = "G"; break;
-    case 4: args->label_suff = malloc(2); args->label_suff = "T"; break;
-    case 5: args->label_suff = malloc(2); args->label_suff = "P"; break;
-    case 6: args->label_suff = malloc(2); args->label_suff = "E"; break;
-    case 7: args->label_suff = malloc(2); args->label_suff = "Z"; break;
-    default:    args->label_suff = malloc(13);
-                args->label_suff = "Unknown_Unit";
+    case 0: args->label_suff = ""; break;
+    case 1: args->label_suff = "k"; break;
+    case 2: args->label_suff = "M"; break;
+    case 3: args->label_suff = "G"; break;
+    case 4: args->label_suff = "T"; break;
+    case 5: args->label_suff = "P"; break;
+    case 6: args->label_suff = "E"; break;
+    case 7: args->label_suff = "Z"; break;
+    default:    args->label_suff = "Unknown_Unit";
                 break;
     }
     p10 %= 3;
@@ -734,6 +734,7 @@ int main(int argc, char *argv[])
             }
 
         }
+        free(line);
         fclose(in);
 
     uint32_t i;
