@@ -642,6 +642,16 @@ static int usage(int status)
                     "    -m, --missing            if set, include count of missing genotypes per sample in\n"
                     "                             output, including the circos files, if they are requested\n"
                     "    -h, --help               this help message\n"
+                    "\n"
+                    "Input:\n"
+                    "    1) Header line specifying samples: '@SMPS SMP1,SMP2,...' (required)\n"
+                    "         This header line needs to start with @SMPS, followed by a tab or a whitespace. \n"
+                    "         Then comes a list of sample names in the order they appear, separated by comma, tab or whitespace.\n"
+                    "    2) Count lines just contain one number per line. (required)\n"
+                    "         They should appear in banker's sequence order with regard to the @SMPS sample order.\n"
+                    "         If one missing count per sample is included, these values are in the first #samples lines.\n"
+                    "    3) Comment lines starting with '#'. (optional)\n"
+                    "         These lines are meant to document details of how the counts were generated and are ignored.\n"
                     "\n");
     exit(status);
 }
