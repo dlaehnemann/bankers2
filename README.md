@@ -35,7 +35,7 @@ Input:
          These lines are meant to document details of how the counts were generated and are ignored.
 ```
 ### Example
-With [circos](http://circos.ca/) [installed](http://circos.ca/tutorials/lessons/configuration/distribution_and_installation/), using the following commands and the file `test/view.gtisec.out`, will create the figure:
+With [circos](http://circos.ca/) [installed](http://circos.ca/tutorials/lessons/configuration/distribution_and_installation/), using the following commands and the file `test/view.gtisec.out`, will create the figures `test/view.gtisec.png` (displayed below) and `test/view.gtisec.png`:
 
     # create all the necessary circos files with prefix view.gtisec.
     bankers2circos view.gtisec.out
