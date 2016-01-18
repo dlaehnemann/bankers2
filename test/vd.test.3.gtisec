@@ -1,0 +1,15 @@
+# This file was produced by bcftools (1.2-206-g09f9dcf+htslib-1.3-2-g6a745fe), the command line was:
+# 	 bcftools gtisec  ../C.pools.onlyALT.vcf
+# Genotype intersections across samples:
+@SMPS 1 2 3
+# Subset intersection counts are in global banker's sequence order.
+#   After exclusive sample counts in order of the SMPS-line, banker's sequence continues with:
+#   1,2   1,3   ...
+# [1] Number of shared non-ref genotypes
+1
+2
+3
+12
+13
+23
+123
